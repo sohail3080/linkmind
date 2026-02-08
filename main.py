@@ -186,8 +186,8 @@ def save_url(data: URL):
 # from qdrant_client import QdrantClient
 
 # qdrant_client = QdrantClient(
-#     url="https://8e00a7c3-4a70-4652-a44d-0308f818bb50.europe-west3-0.gcp.cloud.qdrant.io:6333", 
-#     api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.W70mqTWbnVbLuq1XlGFLRhjRL7K_0aDrZ3SqMhELVeo",
+#     url="", 
+#     api_key="",
 # )
 
 # print(qdrant_client.get_collections())
