@@ -113,7 +113,11 @@ def save_url(data: URL):
                 PointStruct(
                     id=i,
                     vector=emb.tolist(),
-                    payload={"text": all_chunks[i]}
+                    payload={"text": all_chunks[i],
+                    "source_url": metadata[i]["source_url"],
+                    "doc_index": metadata[i]["doc_index"],
+                    "chunk_size": metadata[i]["chunk_size"]},
+                    
                 )
             )
         # upsert points to collection
