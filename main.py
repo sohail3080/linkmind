@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 
 import httpx
 
+from contextlib import asynccontextmanager
+
 # =================================================IMPORT STATEMENTS======================================================================
 
 
@@ -32,15 +34,7 @@ client = QdrantClient(
     url=os.environ.get("QdrantClientURL"),
     api_key=os.environ.get("QdrantClientAPIKey"),
 )
-all_collections = client.get_collections().collections
 
-
-for collection in all_collections:
-    if collection.name != "News":
-        client.create_collection(
-            collection_name="News",
-            vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-        )
 def build_context_from_results(results, max_chars: int = 4000) -> str:
     """
     Flattens retrieved chunks into a single context string.
@@ -72,6 +66,29 @@ class QueryRequest(BaseModel):
     backend: Literal["custom"]
     model: str
     custom_url: str | None = None
+
+async def createCollection():
+    collections = client.get_collections().collections
+    collection_names = {c.name for c in collections}
+
+    if "News" not in collection_names:
+        client.create_collection(
+            collection_name="News",
+            vectors_config=VectorParams(
+                size=384,
+                distance=Distance.COSINE,
+            ),
+        )
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup code
+    await createCollection()
+    yield
+    # Shutdown code (optional)
+    # client.close() if needed
+
+app = FastAPI(lifespan=lifespan)
 
 
 async def customChat(
@@ -127,6 +144,7 @@ base_url = f"/v1/api"
 
 @app.post(f"{base_url}/query")
 async def get_result(payload: QueryRequest, request: Request):
+
     if payload.query:
         query_text = payload.query
         query_backend = payload.backend
@@ -284,3 +302,4 @@ def save_url(data: URL):
 # https://www.mindbowser.com/fastapi-async-api-guide/
 # https://www.codecademy.com/article/what-is-openrouter/
 # https://dev.to/highflyer910/deploy-your-fastapi-app-on-vercel-the-complete-guide-27c0
+# https://fastapi.tiangolo.com/advanced/testing-events/
