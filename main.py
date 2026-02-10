@@ -283,3 +283,4 @@ def save_url(data: URL):
 
 # https://www.mindbowser.com/fastapi-async-api-guide/
 # https://www.codecademy.com/article/what-is-openrouter/
+# https://dev.to/highflyer910/deploy-your-fastapi-app-on-vercel-the-complete-guide-27c0
