@@ -12,6 +12,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from fastapi import HTTPException
 from typing import List
+from typing import Literal
+
 
 import os
 from dotenv import load_dotenv
@@ -66,7 +68,8 @@ class URL(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str
-    backend: str
+    # backend: Literal["openai", "openrouter", "custom"]
+    backend: Literal["custom"]
     model: str
     custom_url: str | None = None
 
