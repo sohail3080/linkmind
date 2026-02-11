@@ -1,8 +1,35 @@
 # News AI Backend
 
-Hello! Welcome. This is a basic generative AI project I've been thinking about. This is the backend part of the project. The plan is to build a system where we can save URLs of different news reports and then query them later using AI. The idea is to implement an advanced search mechanism—an AI-powered search—to handle queries efficiently and intelligently.
+Backend for saving news URLs and querying them with AI-powered search.
 
-## Quick Info
-- **Backend** for news URL management
-- **AI-powered search** instead of traditional search
-- **Save news URLs** and query them intelligently
+## Routes
+
+| Route | Method | Use |
+|-------|--------|-----|
+| `/v1/api/save-url` | POST | Ingest news URLs; content is scraped, chunked, embedded, and stored in Qdrant. |
+| `/v1/api/query` | POST | Search stored news and (with `backend: "custom"`) get an AI answer from your LLM. |
+
+## Payloads
+
+**POST `/v1/api/save-url`**
+```json
+{
+  "urls": ["https://example.com/article1", "https://example.com/article2"]
+}
+```
+
+**POST `/v1/api/query`**  
+Header: `api_key` (for custom LLM).  
+Body:
+```json
+{
+  "query": "Your question",
+  "backend": "custom",
+  "model": "your-model-id",
+  "custom_url": "https://your-llm-api/completions"
+}
+```
+
+## Env
+
+- `QdrantClientURL`, `QdrantClientAPIKey` — Qdrant connection.
