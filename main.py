@@ -2,6 +2,7 @@
 import os
 from contextlib import asynccontextmanager
 from typing import List, Literal, Optional
+import uuid
 
 import httpx
 from dotenv import load_dotenv
@@ -29,7 +30,7 @@ QUERY_LIMIT = 20
 MAX_TOKENS = 300
 
 
-# ================================================= MODELS ============================================================================
+# ================================================= MODELS ===========================================================================
 
 
 class URL(BaseModel):
@@ -250,7 +251,7 @@ def save_url(data: URL):
         for i, emb in enumerate(embeddings):
             points.append(
                 PointStruct(
-                    id=i,
+                    id=str(uuid.uuid4()),
                     vector=emb.tolist(),
                     payload={
                         "text": all_chunks[i],
@@ -280,6 +281,7 @@ def save_url(data: URL):
 # https://www.codecademy.com/article/what-is-openrouter/
 # https://dev.to/highflyer910/deploy-your-fastapi-app-on-vercel-the-complete-guide-27c0
 # https://fastapi.tiangolo.com/advanced/testing-events/
+# https://www.youtube.com/watch?v=d4yCWBGFCEs&list=LL&index=9
 
 # Some installed packages info:(personal note)
 #  pip install unstructured libmagic python-magic python-magic-bin
