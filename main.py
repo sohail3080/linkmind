@@ -1,59 +1,35 @@
-from fastapi import FastAPI, Request, HTTPException
-from pydantic import BaseModel
-
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
-
-from qdrant_client.models import PointStruct
-from fastembed import TextEmbedding
-
-from langchain_community.document_loaders import UnstructuredURLLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-from fastapi import HTTPException
-from typing import List
-from typing import Literal
-
-
+# ================================================= IMPORT STATEMENTS ================================================================
 import os
-from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+from typing import List, Literal, Optional
 
 import httpx
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from fastembed import TextEmbedding
+from langchain_community.document_loaders import UnstructuredURLLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pydantic import BaseModel
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, PointStruct, VectorParams
 
-from contextlib import asynccontextmanager
 
-# =================================================IMPORT STATEMENTS======================================================================
-
-
-app = FastAPI()
+# ================================================= CONFIGURATION ====================================================================
 
 load_dotenv()
 
-# connect to Qdrant Cloud
-client = QdrantClient(
-    url=os.environ.get("QdrantClientURL"),
-    api_key=os.environ.get("QdrantClientAPIKey"),
-)
-
-def build_context_from_results(results, max_chars: int = 4000) -> str:
-    """
-    Flattens retrieved chunks into a single context string.
-    Caps size to avoid token overflow.
-    """
-    texts = []
-
-    for point in results.points:
-        payload = point.payload
-        if payload and "text" in payload:
-            texts.append(payload["text"].strip())
-
-    context = "\n\n".join(texts)
-
-    # optional safety cap (VERY important in real systems)
-    return context[:max_chars]
+# Constants
+COLLECTION_NAME = "News"
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_SIZE = 384
+DEFAULT_MAX_CONTEXT_CHARS = 4000
+CHUNK_SIZE = 200
+CHUNK_OVERLAP = 0
+QUERY_LIMIT = 20
+MAX_TOKENS = 300
 
 
-model = TextEmbedding("BAAI/bge-small-en-v1.5")
+# ================================================= MODELS ============================================================================
 
 
 class URL(BaseModel):
@@ -67,30 +43,56 @@ class QueryRequest(BaseModel):
     model: str
     custom_url: str | None = None
 
+
+# ================================================= SERVICES & UTILITIES =============================================================
+
+# connect to qdrant cloud
+client = QdrantClient(
+    url=os.environ.get("QdrantClientURL"),
+    api_key=os.environ.get("QdrantClientAPIKey"),
+)
+
+# Embedding Text
+model = TextEmbedding(EMBEDDING_MODEL)
+
+
+# build context from results
+def build_context_from_results(
+    results, max_chars: int = DEFAULT_MAX_CONTEXT_CHARS
+) -> str:
+    """
+    Flattens retrieved chunks into a single context string.
+    Caps size to avoid token overflow.
+    """
+    texts = []
+
+    for point in results.points:
+        payload = point.payload
+        if payload and "text" in payload:
+            texts.append(payload["text"].strip())
+
+    context = "\n\n".join(texts)
+
+    # optional safety cap
+    return context[:max_chars]
+
+
+# create collection for news
 async def createCollection():
     collections = client.get_collections().collections
     collection_names = {c.name for c in collections}
 
-    if "News" not in collection_names:
+    if COLLECTION_NAME not in collection_names:
         client.create_collection(
-            collection_name="News",
+            collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(
-                size=384,
+                size=EMBEDDING_SIZE,
                 distance=Distance.COSINE,
             ),
         )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup code
-    await createCollection()
-    yield
-    # Shutdown code (optional)
-    # client.close() if needed
 
-app = FastAPI(lifespan=lifespan)
-
-
+# custom chat
 async def customChat(
     query: str,
     chunks: list[str] | None = None,
@@ -123,7 +125,7 @@ async def customChat(
                         },
                         {"role": "user", "content": query},
                     ],
-                    "max_tokens": 300,
+                    "max_tokens": MAX_TOKENS,
                 },
                 headers={"Authorization": f"Bearer {apikey}" if apikey else ""},
             )
@@ -138,46 +140,75 @@ async def customChat(
     return response.json()
 
 
-# print("Checking if command is okay:::RUNNING==>")
+# ================================================= LIFESPAN & FASTAPI ===============================================================
+
+
+# Startup code
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await createCollection()
+    yield
+    # Shutdown code (optional)
+    # client.close() if needed
+
+
+app = FastAPI(lifespan=lifespan)
+
+# ================================================= ENDPOINTS ========================================================================
+
+# base url
 base_url = f"/v1/api"
 
 
+# query for news
 @app.post(f"{base_url}/query")
 async def get_result(payload: QueryRequest, request: Request):
+    try:
+        if payload.query:
+            query_text = payload.query
+            query_backend = payload.backend
+            query_model = payload.model
+            query_apikey = request._headers.get("api_key")
+            query_custom_url = payload.custom_url
 
-    if payload.query:
-        query_text = payload.query
-        query_backend = payload.backend
-        query_model = payload.model
-        query_apikey = request._headers.get("api_key")
-        query_custom_url = payload.custom_url
+            query_vector = next(iter(model.embed(query_text)))
+            results = client.query_points(
+                collection_name=COLLECTION_NAME,
+                query=query_vector,
+                with_payload=True,
+                limit=QUERY_LIMIT,
+            )
 
-        query_vector = next(iter(model.embed(query_text)))
-        results = client.query_points(
-            collection_name="News", query=query_vector, with_payload=True, limit=20
+            if not query_backend:
+                return {
+                    "status": "query received",
+                    "query": query_text,
+                    "result": results,
+                }
+
+            # First lets handle the custom because I currently do not have any working OpenAI/Claude working api key
+            if query_backend == "custom":
+                answer = await customChat(
+                    query=query_text,
+                    chunks=results,
+                    model=query_model,
+                    apikey=query_apikey,
+                    custom_url=query_custom_url,
+                )
+                return {
+                    "status": "query received",
+                    "query": query_text,
+                    "result": answer,
+                    "chunks": results,
+                }
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to fetch data",
         )
 
-        if not query_backend:
-            return {"status": "query received", "query": query_text, "result": results}
 
-        # First lets handle the custom because I currently do not have any working OpenAI/Claude working api key
-        if query_backend == "custom":
-            answer = await customChat(
-                query=query_text,
-                chunks=results,
-                model=query_model,
-                apikey=query_apikey,
-                custom_url=query_custom_url,
-            )
-            return {
-                "status": "query received",
-                "query": query_text,
-                "result": answer,
-                "chunks":results
-            }
-    return "Please check payload"
-
-
+# save urls for news
 @app.post(f"{base_url}/save-url")
 def save_url(data: URL):
     urls = data.urls
@@ -185,15 +216,17 @@ def save_url(data: URL):
     try:
         loader = UnstructuredURLLoader(
             urls=urls,
-            mode="single",  # or "elements" for more granular control
+            mode="single",
             show_progress_bar=True,
-            headers={"User-Agent": "Mozilla/5.0"},  # Add headers to avoid blocks
-            strategy="fast",  # Use fast parsing strategy
+            headers={"User-Agent": "Mozilla/5.0"},
+            strategy="fast",
         )
         data = loader.load()
 
         rec_splitter = RecursiveCharacterTextSplitter(
-            separators=["\n\n", "\n", " ", ".", ""], chunk_size=200, chunk_overlap=0
+            separators=["\n\n", "\n", " ", ".", ""],
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP,
         )
         all_chunks = []
         metadata = []  # Store metadata for each chunk
@@ -209,9 +242,8 @@ def save_url(data: URL):
                     {"source_url": urls[i], "doc_index": i, "chunk_size": len(chunk)}
                 )
 
-        # embedding generator
+        # embedding
         points = []
-
         embeddings = model.embed(all_chunks)
 
         points = []
@@ -230,76 +262,24 @@ def save_url(data: URL):
             )
         # upsert points to collection
         client.upsert(
-            collection_name="News",
+            collection_name=COLLECTION_NAME,
             points=points,
         )
 
         return {"message": "Data stored successfully.", "URL": "texts"}
     except Exception as e:
         raise HTTPException(
-            status_code=400,  # or 500 depending on the case
+            status_code=400,
             detail="Failed to store data",
         )
 
 
-# # pip install unstructured libmagic python-magic python-magic-bin
-# # Enable concurrent loading
-# loader = UnstructuredURLLoader(
-#     urls=urls,
-#     mode="single",  # or "elements" for more granular control
-#     show_progress_bar=True,
-#     headers={"User-Agent": "Mozilla/5.0"},  # Add headers to avoid blocks
-#     strategy="fast"  # Use fast parsing strategy
-# )
-# data=loader.load()
-
-
-# rec_splitter = RecursiveCharacterTextSplitter(
-#     separators=["\n\n","\n"," ", ".", ""],
-#     chunk_size=200,
-#     chunk_overlap=0
-# )
-# all_chunks = []
-# metadata = []  # Store metadata for each chunk
-
-# for i, doc in enumerate(data):
-#     # Split each document
-#     chunks = rec_splitter.split_text(doc.page_content)
-#     all_chunks.extend(chunks)
-
-#     # Store metadata (source URL for each chunk)
-#     for chunk in chunks:
-#         metadata.append({
-#             "source_url": urls[i],
-#             "doc_index": i,
-#             "chunk_size": len(chunk)
-#         })
-
-
-# model = TextEmbedding('BAAI/bge-small-en-v1.5')
-
-
-# create collection
-# if(results):
-#     client.create_collection(
-#     collection_name="News",
-#     vectors_config=VectorParams(size=384, distance=Distance.COSINE),
-# )
-
-
-# from qdrant_client import QdrantClient
-
-# qdrant_client = QdrantClient(
-#     url="",
-#     api_key="",
-# )
-
-# print(qdrant_client.get_collections())
-
-
-# Source articles I read from:
+# Source articles I read from:(personal note)
 
 # https://www.mindbowser.com/fastapi-async-api-guide/
 # https://www.codecademy.com/article/what-is-openrouter/
 # https://dev.to/highflyer910/deploy-your-fastapi-app-on-vercel-the-complete-guide-27c0
 # https://fastapi.tiangolo.com/advanced/testing-events/
+
+# Some installed packages info:(personal note)
+#  pip install unstructured libmagic python-magic python-magic-bin
