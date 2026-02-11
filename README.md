@@ -1,8 +1,22 @@
-# News AI Backend
+# Building a RAG-Powered News Q&A System with FastAPI & Qdrant
 
 Backend for saving news URLs and querying them with AI-powered search.
 
 ---
+
+## Postman Collection
+
+You can test all endpoints using the Postman collection below:
+
+**Postman Collection:**  
+[https://www.postman.com/myselfmdsohail-1533277/linkmind](https://www.postman.com/myselfmdsohail-1533277/linkmind)
+
+## Running the Backend Locally
+
+Start the FastAPI server using Uvicorn:
+
+```bash
+uvicorn main:app --reload
 
 ## Routes
 
@@ -132,7 +146,7 @@ This architecture is not ideal for heavy ingestion pipelines.
 
 The backend is successfully deployed on Render:
 
-👉 https://linkmind.onrender.com
+ https://linkmind.onrender.com
 
 However:
 
@@ -270,7 +284,24 @@ For production use, you may want:
 ## Sources
 
 - [YouTube](https://www.youtube.com/watch?v=d4yCWBGFCEs&list=LL&index=9)
+- [Virtual environments | FastAPI](https://fastapi.tiangolo.com/virtual-environments/)
 - [FastAPI Async API Guide](https://www.mindbowser.com/fastapi-async-api-guide/)
 - [What is OpenRouter](https://www.codecademy.com/article/what-is-openrouter/)
 - [Deploy FastAPI on Vercel](https://dev.to/highflyer910/deploy-your-fastapi-app-on-vercel-the-complete-guide-27c0)
 - [FastAPI Testing Events](https://fastapi.tiangolo.com/advanced/testing-events/)
+- [Qdrant Cloud Quickstart](https://qdrant.tech/documentation/cloud-quickstart/)
+- [Related deployment issue I went through](https://community.vercel.com/t/cannot-install-needed-python-library-requirements/732)
+- [Deploy to Render for free](https://render.com/docs/free)
+
+
+---
+
+**Architecture Notes**
+1. RAG (Retrieval-Augmented Generation) architecture  
+2. Vector-based semantic search with Qdrant  
+3. Chunk → Embed → Store embedding pipeline  
+4. Stateless FastAPI backend  
+5. LLM integration with context augmentation  
+
+
+> This is a beginner-level learning project built to understand how RAG (Retrieval-Augmented Generation), FastAPI, vector databases (Qdrant), and custom LLM integrations work together. It is intended for experimentation and getting started with AI-powered backend systems, not for production use.
