@@ -17,6 +17,7 @@ Start the FastAPI server using Uvicorn:
 
 ```bash
 uvicorn main:app --reload
+```
 
 ## Routes
 
@@ -303,5 +304,7 @@ For production use, you may want:
 4. Stateless FastAPI backend  
 5. LLM integration with context augmentation  
 
+---
+**Additional Note**
 
 > This is a beginner-level learning project built to understand how RAG (Retrieval-Augmented Generation), FastAPI, vector databases (Qdrant), and custom LLM integrations work together. It is intended for experimentation and getting started with AI-powered backend systems, not for production use.
