@@ -6,7 +6,7 @@ langchain-text-splitters
 unstructured
 libmagic
 python-magic
-# python-magic-bin (this is windows specific)
+# python-magic-bin — install locally when your environment has no system libmagic (e.g. some Windows setups)
 qdrant-client
 fastembed
 python-dotenv
