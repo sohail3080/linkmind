@@ -308,3 +308,9 @@ For production use, you may want:
 **Additional Note**
 
 > This is a beginner-level learning project built to understand how RAG (Retrieval-Augmented Generation), FastAPI, vector databases (Qdrant), and custom LLM integrations work together. It is intended for experimentation and getting started with AI-powered backend systems, not for production use.
+
+---
+
+**Apology & feedback**
+
+Sorry for any mistakes, oversights, or rough edges in this project—whether in the code, docs, or setup. If you spot a bug, have a suggestion, or want to report an issue, please feel free to reach out or open an issue; your feedback is welcome and appreciated.
