@@ -4,6 +4,13 @@ Backend for saving news URLs and querying them with AI-powered search.
 
 ---
 
+## Posted on LinkedIn
+
+I posted about this project on LinkedIn:  
+[https://www.linkedin.com/posts/md-sohail-230141205_github-sohail3080linkmind-activity-7428166732424527872-Cib0?utm_source=share&utm_medium=member_desktop&rcm=ACoAADQq6AQBraEbiT14ztiatVqIq2dy3pG4Gus](https://www.linkedin.com/posts/md-sohail-230141205_github-sohail3080linkmind-activity-7428166732424527872-Cib0?utm_source=share&utm_medium=member_desktop&rcm=ACoAADQq6AQBraEbiT14ztiatVqIq2dy3pG4Gus)
+
+---
+
 ## Postman Collection
 
 You can test all endpoints using the Postman collection below:
